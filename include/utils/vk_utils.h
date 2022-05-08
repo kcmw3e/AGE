@@ -33,6 +33,14 @@ bool is_vk_init();
 // general
 // ---------------------------------------------------------------------------------------------- //
 bool vk_exts_supported(str_t* exts_a, uint32_t exts_len, size_t n);
+uint32_t vk_get_req_exts_len();
+str_t* vk_get_req_exts();
+
+// physical device utils
+// ---------------------------------------------------------------------------------------------- //
+uint32_t vk_pdev_get_qfam_props_len(VkPhysicalDevice pdev);
+VkQueueFamilyProperties* vk_pdev_get_qfam_props(VkPhysicalDevice pdev);
+bool vk_pdev_has_qfam(VkPhysicalDevice pdev, VkQueueFamilyProperties* props_p);
 
 
 // function descriptions
@@ -74,5 +82,50 @@ bool is_vk_init();
 // notes
 //  |> may fail and return [false], in which case xerr() will be called to set errors
 bool vk_exts_supported(str_t* exts_a, uint32_t exts_len, size_t n);
+
+// description
+//  |> gets the number of required Vulkan extensions to use Anonymous Game Engine
+// return
+//  |> the number of required extensions
+uint32_t vk_get_req_exts_len();
+
+// description
+//  |> gets the required Vulkan extensions to use Anonymous Game Engine
+// return
+//  |> the array of strings specifying the required extensions
+// notes
+//  |> the returned array should not be modified or freed
+str_t* vk_get_req_exts();
+
+// description
+//  |> gets the number of queue family properties for a physical device
+// parameters
+//  |> [pdev]: a Vulkan physical device
+// return
+//  |> the number of queue family properties
+uint32_t vk_pdev_get_qfam_props_len(VkPhysicalDevice pdev);
+
+// description
+//  |> gets the array of queue family properties for a physical device
+// parameters
+//  |> [pdev]: a Vulkan physical device
+// return
+//  |> a newly allocated array of queue family properties
+// notes
+//  |> if an allocation failure occurs, [NULL] is returned isntead and [xerr()] is called to set
+//  |   corresponding errors
+VkQueueFamilyProperties* vk_pdev_get_qfam_props(VkPhysicalDevice pdev);
+
+// description
+//  |> checks if a physical device has the specified queue family
+// parameters
+//  |> [pdev]: a Vulkan physical device
+//  |> [props]: a pointer to queue family properties describing the queue family to search for
+// return
+//  |> [true] if a queue family was found that matches the properties specified or [false] otherwise
+// notes
+//  |> any field in the queue family properties left as zero will be ignored when searching for a
+//  |   queue family to match
+bool vk_pdev_has_qfam(VkPhysicalDevice pdev, VkQueueFamilyProperties* props_p);
 
 #endif // ANONYMOUS_GAME_ENGINE_UTILS_VK_UTILS_H
