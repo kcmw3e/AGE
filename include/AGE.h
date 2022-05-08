@@ -23,6 +23,12 @@
 
 #include <cuti.h>
 
+#include "core/AGE_instance.h"
+#include "core/AGE_window.h"
+
+#define AGE_NAME "Anonymous Game Engine"
+#define AGE_VK_VERSION VK_MAKE_VERSION(0, 0, 0)
+#define AGE_VK_API_VERSION VK_API_VERSION_1_0
 
 void AGE_init();
 void AGE_term();
