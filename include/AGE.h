@@ -23,6 +23,7 @@
 
 #include <cuti.h>
 
+#include "core/AGE_err.h"
 #include "core/AGE_instance.h"
 #include "core/AGE_window.h"
 
