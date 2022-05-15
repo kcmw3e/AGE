@@ -130,20 +130,10 @@ void vk_pdev_get_qfam_props(VkPhysicalDevice pdev, arrayable_t* qfam_props_p);
 //  |> checks if queue family properties are supported by the specified Vulkan physical device
 // parameters
 //  |> [pdev]: the Vulkan physical device to check the properties against
-//  |> [props]: an array that contains the properties to be checked
-//  |   |> [.bytes]: the location of the array of properties, which must be of type
-//  |   |   [VkQueueFamilyProperties]
-//  |   |> [.elem_size]: must be equal to the size of the elements in [.bytes],
-//  |   |   [sizeof(VkQueueFamilyProperties)]
-//  |   |> [.len]: the number of properties in the array
+//  |> [props]: the queue family properties to check for
+//  |   |> if any field is left [0], it will be ignored when searching through supported properties
 // return
-//  |> [true] if all the properties in [props] are supported or [false] otherwise
-// notes
-//  |> if anything failed or an error occurred, [xerr()] will be called and [false] will be returned
-//  |> currently the only way to know if an error occurred is to use [xerr] functions to check for
-//  |   errors, but future implementations may use the fields in [props] to indicate an error also
-//  |> for any property in the array, if a field is left as [0], it will not be checked for
-//  |   when comparing to the properties supported by the physical device
+//  |> [true] if [props] is supported or [false] otherwise
 bool vk_pdev_has_qfam(VkPhysicalDevice pdev, VkQueueFamilyProperties props);
 
 #endif // ANONYMOUS_GAME_ENGINE_UTILS_VK_UTILS_H
