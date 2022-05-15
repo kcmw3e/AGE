@@ -9,7 +9,7 @@
 //
 // vk_utils.h
 // ---------------------------------------------------------------------------------------------- //
-// A game engine using the Vulkan API.
+// utilities for using the Vulkan API.
 
 #ifndef ANONYMOUS_GAME_ENGINE_UTILS_VK_UTILS_H
 #define ANONYMOUS_GAME_ENGINE_UTILS_VK_UTILS_H
@@ -23,109 +23,127 @@
 
 #include <cuti.h>
 
-// core initialization/termination
-// ---------------------------------------------------------------------------------------------- //
-void vk_init();
-void vk_term();
-bool is_vk_init();
-
 
 // general
 // ---------------------------------------------------------------------------------------------- //
-bool vk_exts_supported(str_t* exts_a, uint32_t exts_len, size_t n);
-uint32_t vk_get_req_exts_len();
-str_t* vk_get_req_exts();
+void vk_get_sup_exts(arrayable_t* sup_exts_p);
+bool vk_exts_supported(arrayable_t exts);
+void vk_get_req_exts(arrayable_t* req_exts_p);
 
 // physical device utils
 // ---------------------------------------------------------------------------------------------- //
-uint32_t vk_pdev_get_qfam_props_len(VkPhysicalDevice pdev);
-VkQueueFamilyProperties* vk_pdev_get_qfam_props(VkPhysicalDevice pdev);
-bool vk_pdev_has_qfam(VkPhysicalDevice pdev, VkQueueFamilyProperties* props_p);
+void vk_pdev_get_sup_exts(VkPhysicalDevice pdev, arrayable_t* sup_exts_p);
+bool vk_pdev_exts_supported(VkPhysicalDevice pdev, arrayable_t exts);
+void vk_pdev_get_qfam_props(VkPhysicalDevice pdev, arrayable_t* qfam_props_p);
+bool vk_pdev_has_qfam(VkPhysicalDevice pdev, VkQueueFamilyProperties props);
 
 
 // function descriptions
 // ---------------------------------------------------------------------------------------------- //
 
 // description
-//  |> initializes the core Vulkan setup for AGE
-// notes
-//  |> may be called more than once, will immediately return if already initialized
-//  |> [is_vk_init()] may be used to check if successful
-//  |> if failure, will call [xerr()] and set errors
-void vk_init();
-
-// description
-//  |> terminates the core Vulkan setup for AGE and frees any memory allocated in [vk_init()]
-// notes
-//  |> may be called more than once, will immediately return if already terminated or [vk_init()]
-//  |   hasn't been called yet
-//  |> after this function is called, [is_vk_init()] will return [false] until reinitialized
-void vk_term();
-
-// description
-//  |> checks whether Vulkan core has been initialized yet
-// return
-//  |> [true] if [vk_init()] has been successfully called or [false] otherwise
-// notes
-//  |> may be called any time, even if [vk_init()] hasn't been called yet
-bool is_vk_init();
-
-// description
-//  |> checks if Vulkan extensions are supported
+//  |> retrieves the extensions supported by the current Vulkan API
 // parameters
-//  |> [exts_a]: an array of strings naming extensions to check for
-//  |> [exts_len]: the length of [exts_a]
-//  |> [n]: the minimum length of all strings in [exts_a], including any nul-terminating character
-// return
-//  |> [true] all extensions in [exts_a] are supported and [false] if any are not or an error
-//  |   occurred
+//  |> [sup_exts_p]: a pointer to an array that will be filled with the supported extensions
+//  |   |> [.bytes]: the location of the array of extensions (of type [VkExtensionProperties])
+//  |   |> [.elem_size]: will be equal to [sizeof(VkExtensionProperties)]
+//  |   |> [.len]: the number of extensions in the array
 // notes
-//  |> may fail and return [false], in which case xerr() will be called to set errors
-bool vk_exts_supported(str_t* exts_a, uint32_t exts_len, size_t n);
+//  |> if anything failed or an error occurred, [xerr()] will be called and [sup_exts_p] will be
+//  |   an empty array with [sup_exts_p->bytes] being set to [NULL] to signal failure
+void vk_get_sup_exts(arrayable_t* sup_exts_p);
 
 // description
-//  |> gets the number of required Vulkan extensions to use Anonymous Game Engine
-// return
-//  |> the number of required extensions
-uint32_t vk_get_req_exts_len();
-
-// description
-//  |> gets the required Vulkan extensions to use Anonymous Game Engine
-// return
-//  |> the array of strings specifying the required extensions
-// notes
-//  |> the returned array should not be modified or freed
-str_t* vk_get_req_exts();
-
-// description
-//  |> gets the number of queue family properties for a physical device
+//  |> checks if the extensions specified are supported by the current Vulkan API
 // parameters
-//  |> [pdev]: a Vulkan physical device
+//  |> [exts]: an array that contains the extensions to be checked
+//  |   |> [.bytes]: the location of the array of extensions, which may be of type
+//  |   |   [VkExtensionProperties] or [str_t]
+//  |   |> [.elem_size]: must be equal to the size of the elements in [.bytes] (either
+//  |   |   [sizeof(VkExtensionProperties)] or [sizeof(str_t)])
+//  |   |> [.len]: the number of extensions in the array
 // return
-//  |> the number of queue family properties
-uint32_t vk_pdev_get_qfam_props_len(VkPhysicalDevice pdev);
+//  |> [true] if all the extensions in [exts] are supported or [false] otherwise
+// notes
+//  |> if anything failed or an error occurred, [xerr()] will be called and [false] will be returned
+//  |> currently the only way to know if an error occurred is to use [xerr] functions to check for
+//  |   errors, but future implementations may use the fields in [exts] to indicate an error also
+bool vk_exts_supported(arrayable_t exts);
 
 // description
-//  |> gets the array of queue family properties for a physical device
+//  |> retrieves the extensions required by Anonymous Game Engine
 // parameters
-//  |> [pdev]: a Vulkan physical device
-// return
-//  |> a newly allocated array of queue family properties
+//  |> [req_exts_p]: a pointer to an array that will be filled with the required extensions
+//  |   |> [.bytes]: the location of the array of extensions (of type [VkExtensionProperties])
+//  |   |> [.elem_size]: will be equal to [sizeof(VkExtensionProperties)]
+//  |   |> [.len]: the number of extensions in the array
 // notes
-//  |> if an allocation failure occurs, [NULL] is returned isntead and [xerr()] is called to set
-//  |   corresponding errors
-VkQueueFamilyProperties* vk_pdev_get_qfam_props(VkPhysicalDevice pdev);
+//  |> if anything failed or an error occurred, [xerr()] will be called and [req_exts_p] will be
+//  |   an empty array with [req_exts_p->bytes] being set to [NULL] to signal failure
+void vk_get_req_exts(arrayable_t* req_exts_p);
 
 // description
-//  |> checks if a physical device has the specified queue family
+//  |> retrieves the extensions supported by the specified Vulkan physical device
 // parameters
-//  |> [pdev]: a Vulkan physical device
-//  |> [props]: a pointer to queue family properties describing the queue family to search for
-// return
-//  |> [true] if a queue family was found that matches the properties specified or [false] otherwise
+//  |> [pdev]: the Vulkan physical device to get the supported extensions from
+//  |> [sup_exts_p]: a pointer to an array that will be filled with the supported extensions
+//  |   |> [.bytes]: the location of the array of extensions (of type [VkExtensionProperties])
+//  |   |> [.elem_size]: will be equal to [sizeof(VkExtensionProperties)]
+//  |   |> [.len]: the number of extensions in the array
 // notes
-//  |> any field in the queue family properties left as zero will be ignored when searching for a
-//  |   queue family to match
-bool vk_pdev_has_qfam(VkPhysicalDevice pdev, VkQueueFamilyProperties* props_p);
+//  |> if anything failed or an error occurred, [xerr()] will be called and [sup_exts_p] will be
+//  |   an empty array with [sup_exts_p->bytes] being set to [NULL] to signal failure
+void vk_pdev_get_sup_exts(VkPhysicalDevice pdev, arrayable_t* sup_exts_p);
+
+// description
+//  |> checks if the extensions specified are supported by the specified Vulkan physical device
+// parameters
+//  |> [pdev]: the Vulkan physical device to check the extensions against
+//  |> [exts]: an array that contains the extensions to be checked
+//  |   |> [.bytes]: the location of the array of extensions, which may be of type
+//  |   |   [VkExtensionProperties] or [str_t]
+//  |   |> [.elem_size]: must be equal to the size of the elements in [.bytes] (either
+//  |   |   [sizeof(VkExtensionProperties)] or [sizeof(str_t)])
+//  |   |> [.len]: the number of extensions in the array
+// return
+//  |> [true] if all the extensions in [exts] are supported or [false] otherwise
+// notes
+//  |> if anything failed or an error occurred, [xerr()] will be called and [false] will be returned
+//  |> currently the only way to know if an error occurred is to use [xerr] functions to check for
+//  |   errors, but future implementations may use the fields in [exts] to indicate an error also
+bool vk_pdev_exts_supported(VkPhysicalDevice pdev, arrayable_t exts);
+
+// description
+//  |> retrieves the queue family properties supported by the specified Vulkan physical device
+// parameters
+//  |> [pdev]: the Vulkan physical device to get the supported properties from
+//  |> [qfam_props_p]: a pointer to an array that will be filled with the supported properties
+//  |   |> [.bytes]: the location of the array of properties (of type [VkQueueFamilyProperties])
+//  |   |> [.elem_size]: will be equal to [sizeof(VkQueueFamilyProperties)]
+//  |   |> [.len]: the number of properties in the array
+// notes
+//  |> if anything failed or an error occurred, [xerr()] will be called and [qfam_props_p] will be
+//  |   an empty array with [qfam_props_p->bytes] being set to [NULL] to signal failure
+void vk_pdev_get_qfam_props(VkPhysicalDevice pdev, arrayable_t* qfam_props_p);
+
+// description
+//  |> checks if queue family properties are supported by the specified Vulkan physical device
+// parameters
+//  |> [pdev]: the Vulkan physical device to check the properties against
+//  |> [props]: an array that contains the properties to be checked
+//  |   |> [.bytes]: the location of the array of properties, which must be of type
+//  |   |   [VkQueueFamilyProperties]
+//  |   |> [.elem_size]: must be equal to the size of the elements in [.bytes],
+//  |   |   [sizeof(VkQueueFamilyProperties)]
+//  |   |> [.len]: the number of properties in the array
+// return
+//  |> [true] if all the properties in [props] are supported or [false] otherwise
+// notes
+//  |> if anything failed or an error occurred, [xerr()] will be called and [false] will be returned
+//  |> currently the only way to know if an error occurred is to use [xerr] functions to check for
+//  |   errors, but future implementations may use the fields in [props] to indicate an error also
+//  |> for any property in the array, if a field is left as [0], it will not be checked for
+//  |   when comparing to the properties supported by the physical device
+bool vk_pdev_has_qfam(VkPhysicalDevice pdev, VkQueueFamilyProperties props);
 
 #endif // ANONYMOUS_GAME_ENGINE_UTILS_VK_UTILS_H

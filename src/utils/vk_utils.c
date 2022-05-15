@@ -1,200 +1,256 @@
+#include "core/AGE_err.h"
+
 #include "utils/vk_utils.h"
 
-struct vk_core_s {
-    bool is_init;
-    uint32_t req_exts_len;
-    str_t* req_exts_a;
-};
+bool check_exts(arrayable_t sup_exts, arrayable_t exts);
+compare_result_t qfams_match(xbyte_t* arg_props_p, xbyte_t* arg_match_props_p, void* args);
+compare_result_t ext_prop_str_match(xbyte_t* prop, xbyte_t* str, void* args);
+compare_result_t ext_props_match(xbyte_t* ext1, xbyte_t* ext2, void* args);
 
-static struct vk_core_s vk_core;
+void vk_get_sup_exts(arrayable_t* sup_exts_p) {
+    VkResult result;
+    
+    VkExtensionProperties* exts = NULL;
+    uint32_t exts_len = 0;
 
+    result = vkEnumerateInstanceExtensionProperties(NULL, &exts_len, NULL);
+    if (result != VK_SUCCESS) goto failed;
 
-void vk_init_req_exts();
+    exts = xmalloc(exts_len*sizeof(*exts));
+    if (exts == NULL) goto failed;
 
-bool qfams_match(VkQueueFamilyProperties* props_p, VkQueueFamilyProperties* match_props_p);
+    result = vkEnumerateInstanceExtensionProperties(NULL, &exts_len, exts);
+    if (result != VK_SUCCESS) goto failed;
 
-void vk_init() {
-    if (vk_core.is_init) return;
-
-    vk_init_req_exts();
-    if (vk_core.req_exts_a == NULL) goto failed;
-
-    vk_core.is_init = true;
+    sup_exts_p->bytes = (xbyte_t*)exts;
+    sup_exts_p->elem_size = sizeof(*exts);
+    sup_exts_p->len = (size_t)exts_len;
     return;
 
     failed:
+    free(exts);
     xerr(XERR_UNDEFINED);
-    vk_core.is_init = false;
+    sup_exts_p->bytes = NULL;
+    sup_exts_p->elem_size = 0;
+    sup_exts_p->len = 0;
 }
 
-void vk_term() {
-    vk_core.is_init = false;
-    
-    free(vk_core.req_exts_a);
-    vk_core.req_exts_a = NULL;
-}
-
-bool is_vk_init() {
-    return vk_core.is_init;
-}
-
-
-void vk_init_req_exts() {
-    str_t* req_exts_a = NULL;
+void vk_get_req_exts(arrayable_t* req_exts_p) {
+    str_t* req_exts = NULL;
+    uint32_t req_exts_len = 0;
 
     uint32_t glfw_req_exts_len;
-    str_t* glfw_req_exts_a = (str_t*)glfwGetRequiredInstanceExtensions(&glfw_req_exts_len);
-    if (glfw_req_exts_a == NULL) goto failed;
+    str_t* glfw_req_exts = (str_t*)glfwGetRequiredInstanceExtensions(&glfw_req_exts_len);
+    if (glfw_req_exts == NULL) goto failed;
 
     // for future in case any other extensions are to be required
-    uint32_t additional_exts_len = 0;
-    str_t* additional_exts_a = NULL;
+    uint32_t other_exts_len = 0;
+    str_t* other_exts = NULL;
 
-    uint32_t req_exts_len = glfw_req_exts_len + additional_exts_len;
+    req_exts_len = glfw_req_exts_len + other_exts_len;
+    req_exts = xmalloc(req_exts_len*sizeof(*req_exts));
+    if (req_exts == NULL) goto failed;
 
-    req_exts_a = xmalloc(req_exts_len*sizeof(*req_exts_a));
-    if (req_exts_a == NULL) goto failed;
-
-    for (uint32_t i = 0; i < glfw_req_exts_len; i++) req_exts_a[i] = glfw_req_exts_a[i];
+    xmemcpy((xbyte_t*)glfw_req_exts, (xbyte_t*)req_exts, glfw_req_exts_len*sizeof(*glfw_req_exts));
+    xmemcpy((xbyte_t*)other_exts, (xbyte_t*)req_exts, other_exts_len*sizeof(*other_exts));
     
-    for (uint32_t i = 0; i < additional_exts_len; i++)
-        req_exts_a[glfw_req_exts_len + i] = additional_exts_a[i];
-
-    if (!vk_exts_supported(req_exts_a, req_exts_len, VK_MAX_EXTENSION_NAME_SIZE)) goto failed;
-
-    vk_core.req_exts_len = req_exts_len;
-    vk_core.req_exts_a = req_exts_a;
-
+    req_exts_p->bytes = (xbyte_t*)req_exts;
+    req_exts_p->elem_size = sizeof(*req_exts);
+    req_exts_p->len = req_exts_len;
     return;
 
     failed:
     xerr(XERR_UNDEFINED);
-    free(req_exts_a);
-    vk_core.req_exts_len = 0;
-    vk_core.req_exts_a = NULL;
+    free(req_exts);
+    req_exts_p->bytes = NULL;
+    req_exts_p->elem_size = 0;
+    req_exts_p->len = 0;
 }
 
+void vk_pdev_get_qfam_props(VkPhysicalDevice pdev, arrayable_t* qfam_props_p) {
+    VkQueueFamilyProperties* props = NULL;
+    uint32_t props_len = 0;
 
-bool vk_exts_supported(str_t* exts_a, uint32_t exts_len, size_t n) {
-    VkExtensionProperties* supp_exts_props_a;
-    str_t* supp_exts_a;
-    
-    bool exts_supported = false;
+    vkGetPhysicalDeviceQueueFamilyProperties(pdev, &props_len, NULL);
 
-    uint32_t supp_exts_len;
+    props = xmalloc(props_len*sizeof(*props));
+    if (props == NULL) goto failed;
+
+    vkGetPhysicalDeviceQueueFamilyProperties(pdev, &props_len, props);
+
+    qfam_props_p->bytes = (xbyte_t*)props;
+    qfam_props_p->elem_size = sizeof(*props);
+    qfam_props_p->len = (size_t)props_len;
+    return;
+
+    failed:
+    free(props);
+    xerr(XERR_UNDEFINED);
+    qfam_props_p->bytes = NULL;
+    qfam_props_p->elem_size = 0;
+    qfam_props_p->len = 0;
+}
+
+void vk_pdev_get_sup_exts(VkPhysicalDevice pdev, arrayable_t* sup_exts_p) {
     VkResult result;
-    result = vkEnumerateInstanceExtensionProperties(NULL, &supp_exts_len, NULL);
+
+    VkExtensionProperties* exts = NULL;
+    uint32_t exts_len = 0;
+
+    result = vkEnumerateDeviceExtensionProperties(pdev, NULL, &exts_len, NULL);
     if (result != VK_SUCCESS) goto failed;
 
-    supp_exts_props_a = xmalloc(supp_exts_len*sizeof(*supp_exts_props_a));
-    if (supp_exts_props_a == NULL) goto failed;
+    exts = xmalloc(exts_len*sizeof(*exts));
+    if (exts == NULL) goto failed;
 
-    result = vkEnumerateInstanceExtensionProperties(NULL, &supp_exts_len, supp_exts_props_a);
+    result = vkEnumerateDeviceExtensionProperties(pdev, NULL, &exts_len, exts);
     if (result != VK_SUCCESS) goto failed;
 
-    supp_exts_a = xmalloc(supp_exts_len*sizeof(*supp_exts_a));
-    if (supp_exts_a == NULL) goto failed;
-
-    for (uint32_t i = 0; i < supp_exts_len; i++)
-        supp_exts_a[i] = supp_exts_props_a[i].extensionName;
-
-    for (uint32_t i = 0; i < exts_len; i++) {
-        if (!str_in_strs(exts_a[i], supp_exts_a, supp_exts_len, MIN(VK_MAX_EXTENSION_NAME_SIZE, n)))
-            goto cleanup; // [exts_supported] already false, so clean everything up and return
-    }
-    exts_supported = true;
-    goto cleanup;
+    sup_exts_p->bytes = (xbyte_t*)exts;
+    sup_exts_p->elem_size = sizeof(*exts);
+    sup_exts_p->len = exts_len;
+    return;
 
     failed:
+    free(exts);
     xerr(XERR_UNDEFINED);
-    exts_supported = false;
-
-    cleanup:
-    free(supp_exts_a);
-    free(supp_exts_props_a);
-    return exts_supported;   
+    sup_exts_p->bytes = NULL;
+    sup_exts_p->elem_size = 0;
+    sup_exts_p->len = 0;
 }
 
-uint32_t vk_get_req_exts_len() {
-    return vk_core.req_exts_len;
-}
+bool vk_exts_supported(arrayable_t exts) {
+    arrayable_t sup_exts = QUICKRAY_EMPTY(NULL, 0);
 
-str_t* vk_get_req_exts() {
-    return vk_core.req_exts_a;
-}
+    vk_get_sup_exts(&sup_exts);
 
-uint32_t vk_pdev_get_qfam_props_len(VkPhysicalDevice pdev) {
-    uint32_t len = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(pdev, &len, NULL);
-    return len;
-}
-
-VkQueueFamilyProperties* vk_pdev_get_qfam_props(VkPhysicalDevice pdev) {
-    uint32_t len = vk_pdev_get_qfam_props_len(pdev);
-
-    VkQueueFamilyProperties* props_a = xmalloc(len*sizeof(*props_a));
-    if (props_a == NULL) return NULL;
-
-    vkGetPhysicalDeviceQueueFamilyProperties(pdev, &len, props_a);
-    return props_a;
-}
-
-bool vk_pdev_has_qfam(VkPhysicalDevice pdev, VkQueueFamilyProperties* props_p) {
-    uint32_t qfam_props_len = vk_pdev_get_qfam_props_len(pdev);
-
-    VkQueueFamilyProperties* qfam_props_a = vk_pdev_get_qfam_props(pdev);
-    if (qfam_props_a == NULL) goto failed;
-
-    bool has_qfam = false;
-    for (uint32_t i = 0; i < qfam_props_len; i++) {
-        VkQueueFamilyProperties qfam_props = qfam_props_a[i];
-        if (qfams_match(&qfam_props, props_p)) {
-            has_qfam = true;
-            break;
-        }
+    if (sup_exts.bytes == NULL) {
+        xerr(XERR_UNDEFINED);
+        return false;
     }
 
-    goto cleanup;
+    bool exts_supported = check_exts(sup_exts, exts);
+    free(sup_exts.bytes);
+    return exts_supported;
+}
 
-    failed:
-    xerr(XERR_UNDEFINED);
-    has_qfam = false;
+bool vk_pdev_has_qfam(VkPhysicalDevice pdev, VkQueueFamilyProperties props) {
+    arrayable_t qfam_props;
+    vk_pdev_get_qfam_props(pdev, &qfam_props);
 
-    cleanup:
-    free(qfam_props_a);
+    if (qfam_props.bytes == NULL) {
+        xerr(XERR_UNDEFINED);
+        return false;
+    }
 
+    bool has_qfam = array_has(qfam_props, (xbyte_t*)(&props), &qfams_match, NULL);
+    free(qfam_props.bytes);
     return has_qfam;
 }
 
+bool vk_pdev_exts_supported(VkPhysicalDevice pdev, arrayable_t exts) {
+    arrayable_t sup_exts = QUICKRAY_EMPTY(NULL, 0);
+    
+    vk_pdev_get_sup_exts(pdev, &sup_exts);
 
-bool qfams_match(VkQueueFamilyProperties* props_p, VkQueueFamilyProperties* match_props_p) {
+    if (sup_exts.bytes == NULL) {
+        xerr(XERR_UNDEFINED);
+        return false;
+    }
+
+    bool exts_supported = check_exts(sup_exts, exts);
+    free(sup_exts.bytes);
+    return exts_supported;
+}
+
+
+bool check_exts(arrayable_t sup_exts, arrayable_t exts) {
+    compare_fn* compare_fn = NULL;
+    void* args = NULL;
+
+    size_t max_ext_name_len = VK_MAX_EXTENSION_NAME_SIZE;
+
+    switch(exts.elem_size) {
+        case sizeof(str_t):
+            compare_fn = &ext_prop_str_match;
+            args = &max_ext_name_len;
+            break;
+        case sizeof(VkExtensionProperties):
+            compare_fn = &ext_props_match;
+            args = NULL;
+            break;
+        default:
+            xerr(XERR_UNDEFINED);
+            return false;
+    }
+
+    return array_hasall(sup_exts, exts, compare_fn, args);
+}
+
+compare_result_t qfams_match(xbyte_t* props_p, xbyte_t* match_props_p, void* args) {
+    UNUSED(args);
+
+    VkQueueFamilyProperties props = *((VkQueueFamilyProperties*)props_p);
+    VkQueueFamilyProperties match_props = *((VkQueueFamilyProperties*)match_props_p);
+
     // properties to check
-    VkQueueFlags flags = props_p->queueFlags;
-    uint32_t queue_count = props_p->queueCount;
-    uint32_t timestamp_valid_bits = props_p->timestampValidBits;
-    VkExtent3D min_img_transfer_granularity = props_p->minImageTransferGranularity;
+    VkQueueFlags flags = props.queueFlags;
+    uint32_t queue_count = props.queueCount;
+    uint32_t timestamp_valid_bits = props.timestampValidBits;
+    VkExtent3D min_img_transfer_granularity = props.minImageTransferGranularity;
 
     // properties to match
-    VkQueueFlags match_flags = match_props_p->queueFlags;
-    uint32_t match_queue_count = match_props_p->queueCount;
-    uint32_t match_timestamp_valid_bits = match_props_p->timestampValidBits;
-    VkExtent3D match_min_img_transfer_granularity = match_props_p->minImageTransferGranularity;
+    VkQueueFlags match_flags = match_props.queueFlags;
+    uint32_t match_queue_count = match_props.queueCount;
+    uint32_t match_timestamp_valid_bits = match_props.timestampValidBits;
+    VkExtent3D match_min_img_transfer_granularity = match_props.minImageTransferGranularity;
 
-    // if any match property is not 0, check if present in test properties and return [false] if not
-    if (match_flags != 0 && !(flags & match_flags)) return false;
-    if (match_queue_count != 0 && queue_count != match_queue_count) return false;
+    // if any match property is not 0, check if present in test properties and return
+    //  [COMPARISON_NOT_EQUAL] if not
+    if (match_flags != 0
+     && !(flags & match_flags))
+            return COMPARISON_NOT_EQUAL;
+
+    if (match_queue_count != 0
+     && queue_count != match_queue_count)
+            return COMPARISON_NOT_EQUAL;
+     
     if (match_timestamp_valid_bits != 0
      && timestamp_valid_bits != match_timestamp_valid_bits)
-        return false;
+            return COMPARISON_NOT_EQUAL;
+
     if (match_min_img_transfer_granularity.width != 0
      && min_img_transfer_granularity.width != match_min_img_transfer_granularity.width)
-        return false;
+            return COMPARISON_NOT_EQUAL;
+
     if (match_min_img_transfer_granularity.height != 0
      && min_img_transfer_granularity.height != match_min_img_transfer_granularity.height)
-        return false;
+            return COMPARISON_NOT_EQUAL;
+
     if (match_min_img_transfer_granularity.depth != 0
      && min_img_transfer_granularity.depth != match_min_img_transfer_granularity.depth)
-        return false;
+            return COMPARISON_NOT_EQUAL;
     
-    return true;
+    return COMPARISON_EQUAL;
+}
+
+compare_result_t ext_prop_str_match(xbyte_t* prop_p, xbyte_t* str_p, void* max_name_len_p) {
+    VkExtensionProperties prop = *((VkExtensionProperties*)prop_p);
+    str_t str = *((str_t*)str_p);
+    size_t max_name_len = *((size_t*)max_name_len_p);
+
+    bool eq = str_eq(prop.extensionName, str, max_name_len);
+    if (eq) return COMPARISON_EQUAL;
+    return COMPARISON_NOT_EQUAL;
+}
+
+compare_result_t ext_props_match(xbyte_t* prop1_p, xbyte_t* prop2_p, void* args) {
+    UNUSED(args);
+
+    VkExtensionProperties prop1 = *((VkExtensionProperties*)prop1_p);
+    VkExtensionProperties prop2 = *((VkExtensionProperties*)prop2_p);
+
+    bool eq = str_eq(prop1.extensionName, prop2.extensionName, VK_MAX_EXTENSION_NAME_SIZE);
+    if (eq) return COMPARISON_EQUAL;
+    return COMPARISON_NOT_EQUAL;
 }
