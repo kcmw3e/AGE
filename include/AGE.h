@@ -35,6 +35,9 @@ void AGE_init();
 void AGE_term();
 bool is_AGE_init();
 
+str_t* AGE_get_vk_req_exts();
+uint32_t AGE_get_vk_req_exts_len();
+
 
 // function descriptions
 // ---------------------------------------------------------------------------------------------- //
@@ -56,5 +59,21 @@ void AGE_term();
 // notes
 //  |> this function is always safe to call, even if AGE_init() has not been called already.
 bool is_AGE_init();
+
+// description
+//  |> retrieves the extensions required by Anonymous Game Engine
+// return
+//  |> an array of strings naming the Vulkan extensions required
+// notes
+//  |> the number of extensions can be queried with [AGE_get_vk_req_exts_len()]
+str_t* AGE_get_vk_req_exts();
+
+// description
+//  |> retrieves the number extensions required by Anonymous Game Engine
+// return
+//  |> the length of the array of strings naming the Vulkan extensions required
+// notes
+//  |> the names of extensions can be queried with [AGE_get_vk_req_exts()]
+uint32_t AGE_get_vk_req_exts_len();
 
 #endif // ANONYMOUS_GAME_ENGINE_H

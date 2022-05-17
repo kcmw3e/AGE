@@ -28,7 +28,6 @@
 // ---------------------------------------------------------------------------------------------- //
 void vk_get_sup_exts(arrayable_t* sup_exts_p);
 bool vk_exts_supported(arrayable_t exts);
-void vk_get_req_exts(arrayable_t* req_exts_p);
 
 // physical device utils
 // ---------------------------------------------------------------------------------------------- //
@@ -69,18 +68,6 @@ void vk_get_sup_exts(arrayable_t* sup_exts_p);
 //  |> currently the only way to know if an error occurred is to use [xerr] functions to check for
 //  |   errors, but future implementations may use the fields in [exts] to indicate an error also
 bool vk_exts_supported(arrayable_t exts);
-
-// description
-//  |> retrieves the extensions required by Anonymous Game Engine
-// parameters
-//  |> [req_exts_p]: a pointer to an array that will be filled with the required extensions
-//  |   |> [.bytes]: the location of the array of extensions (of type [VkExtensionProperties])
-//  |   |> [.elem_size]: will be equal to [sizeof(VkExtensionProperties)]
-//  |   |> [.len]: the number of extensions in the array
-// notes
-//  |> if anything failed or an error occurred, [xerr()] will be called and [req_exts_p] will be
-//  |   an empty array with [req_exts_p->bytes] being set to [NULL] to signal failure
-void vk_get_req_exts(arrayable_t* req_exts_p);
 
 // description
 //  |> retrieves the extensions supported by the specified Vulkan physical device

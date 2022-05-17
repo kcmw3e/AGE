@@ -35,37 +35,6 @@ void vk_get_sup_exts(arrayable_t* sup_exts_p) {
     sup_exts_p->len = 0;
 }
 
-void vk_get_req_exts(arrayable_t* req_exts_p) {
-    str_t* req_exts = NULL;
-    uint32_t req_exts_len = 0;
-
-    uint32_t glfw_req_exts_len;
-    str_t* glfw_req_exts = (str_t*)glfwGetRequiredInstanceExtensions(&glfw_req_exts_len);
-    if (glfw_req_exts == NULL) goto failed;
-
-    // for future in case any other extensions are to be required
-    uint32_t other_exts_len = 0;
-    str_t* other_exts = NULL;
-
-    req_exts_len = glfw_req_exts_len + other_exts_len;
-    req_exts = xmalloc(req_exts_len*sizeof(*req_exts));
-    if (req_exts == NULL) goto failed;
-
-    xmemcpy((xbyte_t*)glfw_req_exts, (xbyte_t*)req_exts, glfw_req_exts_len*sizeof(*glfw_req_exts));
-    xmemcpy((xbyte_t*)other_exts, (xbyte_t*)req_exts, other_exts_len*sizeof(*other_exts));
-    
-    req_exts_p->bytes = (xbyte_t*)req_exts;
-    req_exts_p->elem_size = sizeof(*req_exts);
-    req_exts_p->len = req_exts_len;
-    return;
-
-    failed:
-    xerr(XERR_UNDEFINED);
-    free(req_exts);
-    req_exts_p->bytes = NULL;
-    req_exts_p->elem_size = 0;
-    req_exts_p->len = 0;
-}
 
 void vk_pdev_get_qfam_props(VkPhysicalDevice pdev, arrayable_t* qfam_props_p) {
     VkQueueFamilyProperties* props = NULL;
